@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+from decimal import Decimal
 
 
 class Course(models.Model):
@@ -14,6 +15,20 @@ class Course(models.Model):
         on_delete=models.SET_NULL,
         verbose_name=_('Владелец'),
         null=True, blank=True
+    )
+
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        verbose_name='Цена курса'
+    )
+
+    stripe_price_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='ID цены Stripe'
     )
 
     class Meta:

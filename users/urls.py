@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import PaymentListAPIView, UserRegisterAPIView, UserViewSet, SubscriptionManageAPIView
+from .views import PaymentListAPIView, UserRegisterAPIView, UserViewSet, SubscriptionManageAPIView, PaymentCreateAPIView
 
 
 user_router = DefaultRouter()
@@ -16,4 +16,6 @@ urlpatterns = [
     path('payments/', PaymentListAPIView.as_view(), name='payment-list'),
     # Эндпоинт для управления подпиской
     path('subscriptions/manage/', SubscriptionManageAPIView.as_view(), name='subscription-manage'),
+    # Эндпоинт для создания оплаты Stripe
+    path('payments/create/', PaymentCreateAPIView.as_view(), name='payment-create'),
 ]
