@@ -61,3 +61,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Subscription
         fields = ('course',) # Нам нужно только ID курса для подписки
+
+
+# Сериализатор для запроса оплаты
+class PaymentRequestSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField()

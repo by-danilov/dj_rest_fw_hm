@@ -6,6 +6,9 @@ from .models import Payment, User, Subscription
 from .serializers import PaymentSerializer, UserSerializer, UserRegisterSerializer, SubscriptionSerializer
 from .filters import PaymentFilter
 from rest_framework.filters import OrderingFilter
+from drf_spectacular.utils import extend_schema
+from users.serializers import PaymentRequestSerializer
+from materials.services import create_stripe_session
 
 
 # Контроллер для списка платежей с фильтрацией и сортировкой
@@ -46,6 +49,18 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
+@extend_schema(
+    summary="Управление подпиской на курс",
+    description="POST-запрос для подписки/отписки. Если подписка существует, она удаляется (отписка). Если нет, она создается (подписка).",
+    # В теле запроса ожидаем только course_id
+    request=SubscriptionSerializer,
+    # Возможные ответы
+    responses={
+        201: {'description': 'Подписка успешно оформлена.'},
+        204: {'description': 'Подписка успешно удалена (отписка).'},
+        400: {'description': 'Ошибка: Не указан ID курса.'},
+    }
+)
 
 # View для установки/удаления подписки
 class SubscriptionManageAPIView(generics.CreateAPIView):
@@ -72,3 +87,27 @@ class SubscriptionManageAPIView(generics.CreateAPIView):
             # Если подписка не существует — создаем (подписываемся)
             Subscription.objects.create(user=user, course_id=course_id)
             return Response({"message": "Подписка успешно оформлена."}, status=status.HTTP_201_CREATED)
+
+
+# View для создания платежной сессии Stripe
+class PaymentCreateAPIView(generics.CreateAPIView):
+    serializer_class = PaymentRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        course_id = serializer.validated_data['course_id']
+        user = request.user
+
+        error, payment_url = create_stripe_session(course_id, user)
+
+        if error:
+            return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+        # Возвращаем ссылку на оплату
+        return Response(
+            {"payment_url": payment_url},
+            status=status.HTTP_201_CREATED
+        )

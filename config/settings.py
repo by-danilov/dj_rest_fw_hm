@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'materials.apps.MaterialsConfig',
     'rest_framework',
+    'drf_spectacular',
     'django_filters',
 ]
 
@@ -135,6 +136,8 @@ DATABASES = {
     }
 }
 
+# Stripe Secret Key
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -179,3 +182,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 MEDIA_URL = '/media/'
+
+
+SPECTACULAR_SETTINGS = {
+    # Заголовок, который будет отображаться в документации
+    'TITLE': 'API для образовательной платформы',
+    # Описание API
+    'DESCRIPTION': 'API для управления курсами, уроками, пользователями и платежами.',
+    # Версия API
+    'VERSION': '1.0.0',
+    # Установка аутентификации по умолчанию в документации (для Swagger UI)
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': False,
+        'docExpansion': 'none',
+        # Указываем, что нужно использовать Bearer Token
+        'defaultModelsExpandDepth': 1,
+    },
+    'COMPONENT_SPLIT_REQUEST': True, # Улучшенное отображение для сложных сериализаторов
+}

@@ -1,11 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
-# from django.contrib.auth import get_user_model
 from materials.models import Course, Lesson
 from django.conf import settings
-
-# User = get_user_model()
 
 
 class User(AbstractUser):
@@ -29,18 +26,26 @@ class User(AbstractUser):
 
 
 class Payment(models.Model):
-    PAYMENT_CHOICES = [
-        ('cash', 'Наличные'),
-        ('transfer', 'Перевод на счет'),
-    ]
+    # Список методов оплаты
+    class PaymentMethod(models.TextChoices):
+        CASH = 'cash', _('Наличные')
+        TRANSFER = 'transfer', _('Перевод на счет')
+        STRIPE = 'stripe', _('Stripe')
 
-    # 1. Пользователь
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name=_('Пользователь'))
+    # Пользователь
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name=_('Пользователь')
+    )
 
-    # 2. Дата оплаты
-    date = models.DateTimeField(verbose_name=_('Дата оплаты'), auto_now_add=True)
+    # Дата оплаты
+    date = models.DateTimeField(
+        verbose_name=_('Дата оплаты'),
+        auto_now_add=True
+    )
 
-    # 3. Оплаченный курс
+    # Оплаченный курс
     paid_course = models.ForeignKey(
         Course,
         on_delete=models.SET_NULL,
@@ -48,7 +53,7 @@ class Payment(models.Model):
         null=True, blank=True
     )
 
-    # 4. Оплаченный урок
+    # Оплаченный урок
     paid_lesson = models.ForeignKey(
         Lesson,
         on_delete=models.SET_NULL,
@@ -56,14 +61,37 @@ class Payment(models.Model):
         null=True, blank=True
     )
 
-    # 5. Сумма оплаты
-    amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name=_('Сумма оплаты'))
+    # Сумма оплаты
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name=_('Сумма оплаты')
+    )
 
-    # 6. Способ оплаты
+    # Способ оплаты
     payment_method = models.CharField(
         max_length=10,
-        choices=PAYMENT_CHOICES,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.STRIPE,
         verbose_name=_('Способ оплаты')
+    )
+
+    # Поля для интеграции Stripe
+    stripe_session_id = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name='ID сессии Stripe'
+    )
+    payment_link = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name='Ссылка на оплату Stripe'
+    )
+    is_paid = models.BooleanField(
+        default=False,
+        verbose_name='Статус оплаты'
     )
 
     class Meta:
