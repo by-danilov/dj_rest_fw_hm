@@ -8,7 +8,10 @@ from .filters import PaymentFilter
 from rest_framework.filters import OrderingFilter
 from drf_spectacular.utils import extend_schema
 from users.serializers import PaymentRequestSerializer
-from materials.services import create_stripe_session
+from materials.services import create_stripe_product, create_stripe_price, create_stripe_session
+from materials.models import Course
+from users.models import Payment
+from django.shortcuts import get_object_or_404
 
 
 # Контроллер для списка платежей с фильтрацией и сортировкой
@@ -101,13 +104,47 @@ class PaymentCreateAPIView(generics.CreateAPIView):
         course_id = serializer.validated_data['course_id']
         user = request.user
 
-        error, payment_url = create_stripe_session(course_id, user)
+        # Получаем курс
+        course = get_object_or_404(Course, pk=course_id)
+
+        # Проверяем наличие Stripe Price ID и создаем Product/Price при необходимости
+        price_id = course.stripe_price_id
+
+        if not price_id:
+            # Cоздаем Product
+            product_id = create_stripe_product(course)
+            if not product_id:
+                return Response({"error": "Не удалось создать продукт Stripe."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Cоздаем Price, используя Product ID
+            price_id = create_stripe_price(course, product_id)
+            if not price_id:
+                return Response({"error": "Не удалось создать цену Stripe."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Создаем запись о платеже в нашей базе данных (Статус is_paid=False)
+        payment = Payment.objects.create(
+            user=user,
+            paid_course=course,  # Используем твое имя поля 'paid_course'
+            amount=course.price,
+            payment_method=Payment.PaymentMethod.STRIPE,
+        )
+
+        # Создаем сессию Stripe, используя ID цены
+        client_ref_id = str(payment.pk)  # Используем ID нашего Payment для обратной связи
+        error, checkout_session = create_stripe_session(price_id, user.email, client_ref_id)
 
         if error:
+            # Если Stripe вернул ошибку, удаляем созданный объект Payment
+            payment.delete()
             return Response(error, status=status.HTTP_400_BAD_REQUEST)
+
+        # Сохраняем ID сессии и ссылку в нашем объекте Payment
+        payment.stripe_session_id = checkout_session.id
+        payment.payment_link = checkout_session.url
+        payment.save()
 
         # Возвращаем ссылку на оплату
         return Response(
-            {"payment_url": payment_url},
+            {"payment_url": checkout_session.url},
             status=status.HTTP_201_CREATED
         )
