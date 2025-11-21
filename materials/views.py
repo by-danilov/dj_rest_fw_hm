@@ -3,6 +3,8 @@ from .paginators import CourseLessonPaginator
 from .models import Course, Lesson
 from .serializers import CourseSerializer, LessonSerializer
 from .permissions import IsModeratorOrOwner
+from materials.tasks import send_course_update_notification
+from django.utils import timezone
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -17,6 +19,13 @@ class CourseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    def perform_update(self, serializer):
+        old_updated_at = serializer.instance.updated_at
+        course = serializer.save()
+        if old_updated_at != course.updated_at:
+            # Асинхронный вызов задачи Celery
+            send_course_update_notification.delay(course.pk)
 
 # Получение списка уроков и создание нового
 class LessonListAPIView(generics.ListCreateAPIView):
