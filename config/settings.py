@@ -121,6 +121,36 @@ TIME_ZONE = 'Europe/Moscow'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLE_UTC = True
 
+REDIS_HOST = os.getenv('REDIS_HOST')
+REDIS_PORT = os.getenv('REDIS_PORT')
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND')
+
+# Настройки Celery
+CELERY_BROKER_URL = CELERY_BROKER_URL
+CELERY_RESULT_BACKEND = CELERY_RESULT_BACKEND
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# Расписание для Celery Beat
+CELERY_BEAT_SCHEDULE = {
+    'check-user-activity-monthly': {
+        # Путь к задаче
+        'task': 'users.tasks.check_user_activity_and_block',
+        # Запускать каждый день в полночь
+        'schedule': timedelta(days=1),
+        # Аргументы (если есть)
+        'args': (),
+        'options': {'expires': 3600}, # Если не выполнилась за час, отменить
+    },
+}
+
+# Настройка Timezone
+TIME_ZONE = 'Europe/Moscow'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
